@@ -1,6 +1,6 @@
 [project]
 name = "pymanhuagui"
-version = "1.0.1"
+version = "1.0.2"
 description = "Manga Downloader for www.manhuagui.com"
 authors = [
     { name = "fournoas", email = "admin@fournoas.com" }

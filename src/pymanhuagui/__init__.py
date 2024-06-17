@@ -2,6 +2,8 @@
 import logging
 import sys
 
+from .cli import main
+
 
 logger = logging.getLogger(__name__)
 
