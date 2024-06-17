@@ -15,6 +15,10 @@ dependencies = [
 readme = "README.md"
 requires-python = ">= 3.8"
 
+[project.urls]
+"Homepage" = "https://github.com/tabris17/pymanhuagui"
+"Bug Tracker" = "https://github.com/tabris17/pymanhuagui/issues"
+
 [project.scripts]
 "pymanhuagui" = "pymanhuagui:main"
 
