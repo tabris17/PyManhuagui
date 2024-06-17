@@ -1,6 +1,6 @@
 [project]
 name = "pymanhuagui"
-version = "1.0.2"
+version = "2.0.0"
 description = "Manga Downloader for www.manhuagui.com"
 authors = [
     { name = "fournoas", email = "admin@fournoas.com" }
@@ -9,7 +9,6 @@ dependencies = [
     "requests>=2.32.3",
     "lzstring>=1.0.4",
     "beautifulsoup4>=4.12.3",
-    "js2py>=0.74",
     "lxml>=5.2.2",
 ]
 readme = "README.md"

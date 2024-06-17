@@ -10,7 +10,6 @@ from typing import List
 import requests
 import bs4
 import lzstring
-import js2py
 
 from requests.exceptions import RequestException
 from requests.adapters import HTTPAdapter
@@ -183,17 +182,62 @@ def fetch_volume(volume: VolumeData):
     if not response.ok:
         raise ServerError(response)
 
+    def js_deobfuscate(p, a, c, k):
+        """
+        function (p, a, c, k, e, d) {
+            e = function(c) {
+                return (c < a ? "" : e(parseInt(c / a))) + ((c = c % a) > 35 ? String.fromCharCode(c + 29) : c.toString(36))
+            };
+            if (!''.replace(/^/, String)) {
+                while (c--) d[e(c)] = k[c] || e(c);
+                k = [function(e) {
+                    return d[e]
+                }];
+                e = function() {
+                    return '\\w+'
+                };
+                c = 1;
+            };
+            while (c--)
+                if (k[c]) p = p.replace(new RegExp('\\b' + e(c) + '\\b', 'g'), k[c]);
+            return p;
+        }
+        """
+        def base36(n):
+            alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
+            result = ''
+            while n != 0:
+                n, i = divmod(n, len(alphabet))
+                result = alphabet[i] + result
+            return result or '0'
+
+        def e(_c):
+            return ('' if _c < a else e(int(_c / a))) + (chr(_c % a + 29) if _c % a > 35 else base36(_c % a))
+
+        c -= 1
+        d = {}
+        while c + 1:
+            d[e(c)] = e(c) if k[c] == '' else k[c]
+            c -= 1
+
+        return json.loads(re.search(r"(\{.*\})", ''.join([
+            d[_] if _ in d else _ for _ in re.split(r'(\b\w+\b)', p)
+        ]).replace('\\\'', '\'')).group(1))
+
     try:
         js_code = re.search(
             r'<script type="text\/javascript">window\["\\x65\\x76\\x61\\x6c"\](\(function\(p.*?)</script>', 
             response.content.decode('utf-8')
         ).group(1)
-        js_ctx = js2py.EvalJs({
-            'decompressFromBase64': lambda s: lzstring.LZString.decompressFromBase64(s.value)
-        })
-        js_ctx.execute('String.prototype.splic=function(f){return decompressFromBase64(this).split(f)};')
-        json_content = re.search(r"(\{.*\})", js_ctx.eval(js_code)).group(1)
-        img_data = json.loads(json_content)
+        js_func_code = r"""(function(p,a,c,k,e,d){e=function(c){return(c<a?"":e(parseInt(c/a)))+((c=c%a)>35?String.fromCharCode(c+29):c.toString(36))};if(!''.replace(/^/,String)){while(c--)d[e(c)]=k[c]||e(c);k=[function(e){return d[e]}];e=function(){return'\\w+'};c=1;};while(c--)if(k[c])p=p.replace(new RegExp('\\b'+e(c)+'\\b','g'),k[c]);return p;}"""
+        assert js_code.startswith(js_func_code)
+        result = re.match(r"^\('(.+)',(\d+),(\d+),'(.+)'\['\\x73\\x70\\x6c\\x69\\x63'\]\('\\x7c'\),0,\{\}\)\)$", js_code[len(js_func_code):].strip())
+        img_data = js_deobfuscate(
+            result.group(1),
+            int(result.group(2)),
+            int(result.group(3)),
+            lzstring.LZString.decompressFromBase64(result.group(4)).split('|')
+        )
         img_query = '?e={e}&m={m}'.format(e=img_data['sl']['e'], m=img_data['sl']['m'])
         img_url = IMG_BASE_URL + img_data['path']
         return [img_url + f + img_query for i, f in enumerate(img_data['files'])]
