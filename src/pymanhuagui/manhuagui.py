@@ -15,40 +15,20 @@ import js2py
 from requests.exceptions import RequestException
 from requests.adapters import HTTPAdapter
 
+from .exceptions import NetworkError, ServerError, ParserError
+
 
 BASE_URL = 'https://www.manhuagui.com'
 IMG_BASE_URL = 'https://i.hamreus.com'
-#COVER_URL = 'https://cf.mhgui.com/cpic/h/'
-MAX_RETRIES = 3
+MAX_RETRIES = 5
 POOL_SIZE = 1
 
-
-class AppException(Exception): """AppException"""
-
-
-class NetworkError(AppException): """NetworkError"""
-
-
-class ServerError(AppException): """ServerError"""
-
-
-class ParserError(AppException): """ParserError"""
-
-
-class FileNotFound(AppException): """FileNotFound"""
 
 @dataclass
 class BookEntry:
     """BookEntry"""
     id: str
     url: str
-
-
-@dataclass
-class PageData:
-    """PageData"""
-    url: str
-    number: int
 
 
 @dataclass
@@ -59,7 +39,6 @@ class VolumeData:
     title: str
     page_qty: int
     section: str
-    pages: List[PageData] = None
 
 
 @dataclass
@@ -89,7 +68,7 @@ class BookData:
 
 
 http = requests.Session()
-http.mount('https://', HTTPAdapter(max_retries=MAX_RETRIES, 
+http.mount('https://', HTTPAdapter(max_retries=MAX_RETRIES,
                                    pool_connections=POOL_SIZE,
                                    pool_maxsize=POOL_SIZE))
 
@@ -101,13 +80,13 @@ def _eval(function, default=None):
     """_eval()"""
     try:
         return function()
-    except (ValueError, IndexError, AttributeError):
+    except BaseException:
         return default
 
 
 def _request(url):
     """_request()"""
-    logger.info('fetch %s', url)
+    logger.info('Fetch %s', url)
 
     try:
         return http.get(url, headers={
@@ -140,7 +119,8 @@ def _parse_volumes(html_entity: bs4.BeautifulSoup):
                         volume_section
                     ))
         elif element.name == 'input' and element.attrs['id'] == '__VIEWSTATE':
-            html_part = '<div class="chapter">%s</div>' % lzstring.LZString.decompressFromBase64(element.attrs['value'])
+            html_part = '<div class="chapter">%s</div>' % \
+                lzstring.LZString.decompressFromBase64(element.attrs['value'])
             return _parse_volumes(bs4.BeautifulSoup(html_part, features='lxml'))
     return volumes
 
@@ -192,7 +172,7 @@ def fetch_book(book_entry: BookEntry):
                 book_data.is_complete = _eval(lambda: span.findChild('span').text == '已完结')
                 book_data.last_updated = _eval(lambda: span.findChildren('span')[1].text)
     except Exception as exc:
-        raise ParserError(exc)
+        raise ParserError from exc
 
     return book_data
 
@@ -216,7 +196,7 @@ def fetch_volume(volume: VolumeData):
         img_data = json.loads(json_content)
         img_query = '?e={e}&m={m}'.format(e=img_data['sl']['e'], m=img_data['sl']['m'])
         img_url = IMG_BASE_URL + img_data['path']
-        return [PageData(img_url + f + img_query, i + 1) for i, f in enumerate(img_data['files'])]
+        return [img_url + f + img_query for i, f in enumerate(img_data['files'])]
     except Exception as exc:
         raise ParserError from exc
 
