@@ -1,6 +1,7 @@
 """manhuagui.py"""
 import logging
 import re
+import time
 import json
 import shutil
 
@@ -21,6 +22,7 @@ BASE_URL = 'https://www.manhuagui.com'
 IMG_BASE_URL = 'https://i.hamreus.com'
 MAX_RETRIES = 5
 POOL_SIZE = 1
+REQUEST_COOLDOWN = 12
 
 
 @dataclass
@@ -74,6 +76,8 @@ http.mount('https://', HTTPAdapter(max_retries=MAX_RETRIES,
 
 logger = logging.getLogger(__name__)
 
+last_request_time = 0
+
 
 def _eval(function, default=None):
     """_eval()"""
@@ -85,6 +89,17 @@ def _eval(function, default=None):
 
 def _request(url):
     """_request()"""
+    if url.startswith(BASE_URL):
+        global last_request_time
+        current_timestamp = time.time()
+        request_interval = current_timestamp - last_request_time
+        if request_interval < REQUEST_COOLDOWN:
+            sleep_time = REQUEST_COOLDOWN - request_interval
+            logger.info('waiting cooldown %.3f seconds', sleep_time)
+            time.sleep(sleep_time)
+            current_timestamp = time.time()
+        last_request_time = current_timestamp
+
     logger.info('Fetch %s', url)
 
     try:
@@ -152,7 +167,7 @@ def fetch_book(book_entry: BookEntry):
         subtitle = book_title_div.findChild('h2').text
         if subtitle:
             book_data.alias = [subtitle]
-        book_data.description = '\n'.join([_p.text for _p in html_entity.find(attrs={'id': 'intro-all'}).findChildren('p')])
+        book_data.description = html_entity.find(attrs={'id': 'intro-all'}).getText('\n')
         book_data.cover = 'https:' + html_entity.find('p', attrs={'class': 'hcover'}).findChild('img').attrs['src']
         book_detail_list = html_entity.find('ul', attrs={'class': 'detail-list'})
         for span in book_detail_list.select('li>span'):
