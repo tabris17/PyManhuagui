@@ -32,6 +32,8 @@ def parse_args() -> argparse.Namespace:
                         help='write stdout to the specified file')
     parser.add_argument('-x', '--proxy', metavar='host', dest='proxy',
                         help='use proxy server')
+    parser.add_argument('-s', '--section', metavar='name', dest='sections', action='append',
+                        help='one or more section names to be downloaded')
     parser.add_argument('-d', '--debug', action='store_true', help='display debug message')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + pkg_version)
     parser.add_argument('-h', '--help', action='help', help='show this help message and exit')
@@ -114,7 +116,9 @@ def main() -> int:
         logger.error('Unable to fetch volume info, the book may have been removed')
 
     for volume_data in book_data.volumes:
-        volume_save_path = os.path.join(book_save_path, make_filename(volume_data.title))
+        if args.sections and (volume_data.section not in args.sections):
+            continue
+        volume_save_path = os.path.join(book_save_path, make_filename(volume_data.section), make_filename(volume_data.title))
         if not os.path.exists(volume_save_path):
             os.makedirs(volume_save_path)
             logger.debug('Path "%s" created', volume_save_path)

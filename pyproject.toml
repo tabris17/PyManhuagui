@@ -1,6 +1,6 @@
 [project]
 name = "pymanhuagui"
-version = "2.1.0"
+version = "3.0.0"
 description = "Manga Downloader for www.manhuagui.com"
 authors = [
     { name = "fournoas", email = "admin@fournoas.com" }
@@ -28,7 +28,9 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = []
+dev-dependencies = [
+    "pytest>=8.3.2",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
