@@ -32,5 +32,5 @@ optional arguments:
 例子：
 
 ```shell
-pymanhuagui -f 完全版 -f 全彩版 https://www.manhuagui.com/comic/1639/
+pymanhuagui -s 完全版 -s 全彩版 https://www.manhuagui.com/comic/1639/
 ```
